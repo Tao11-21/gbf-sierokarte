@@ -1288,13 +1288,13 @@
                 warningAudioSelector.id = 'warningAudioSelector';
                 const warningAudioList = [
                     {
-                        id: 1, name: '哈雪大帽险'
+                        id: 1, name: '不得不哈'
                     },
                     {
-                        id: 2, name: '猝死闹铃（希哥）'
+                        id: 2, name: '夜袭小曲'
                     },
                     {
-                        id: 3, name: '露露版神曼波'
+                        id: 3, name: '圆神'
                     },
                 ]
                 warningAudioList.forEach((item) => {
