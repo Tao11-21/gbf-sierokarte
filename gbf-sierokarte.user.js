@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name                榭洛科特工坊
-// @version             0.3.71
+// @version             0.3.72
 // @author              Alk
 // @license             GPL-3.0
 // @description         榭洛科特工坊 -
@@ -22,13 +22,15 @@
 (function () {
     'use strict';
 
-    const version = '0.3.71';
+    const version = '0.3.72';
 
     // region 配置默认值
     const defaults = {
         refresh: {
             use_back: false,
             attack: true,
+            summon: false,  // 👈 新增：召唤后刷新
+            ability: false, // 👈 新增：技能后刷新
             keywords: [
                 {
                     id: 'koenig_dekret',
@@ -48,7 +50,7 @@
                 {
                     id: 'yatima',
                     enabled: false,
-                    keys: ['ヤチマ']
+                    keys: ['ヤチマ'] // 👈 恢复原版雅琪玛
                 },
                 {
                     id: 'two_platoons',
@@ -86,9 +88,7 @@
             hp_less_than: 50,
             member_more_than: 5,
             contribution: 1800000,
-            sub_options: [
-                'filtering', 'filtering_by_asc', 'auto_auto'
-            ]
+            sub_options: ['filtering', 'filtering_by_asc', 'auto_auto']
         },
         redirect: {
             enabled: false,
@@ -162,7 +162,6 @@
     // endregion
 
     // region 固定链接
-
     const icon_url = {
         mine: 'https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/sierokarte.png',
         gold_brick: 'https://gbf.wiki/images/5/5b/Gold_Brick_square.jpg',
@@ -204,16 +203,13 @@
 
                 const PRI = '.btn-usual-ok.se-quest-start';
                 const SEC = '.btn-usual-ok.btn-silent-se';
-                const opts = {interval: 550, timeout: 550}; // 10 次
+                const opts = {interval: 550, timeout: 550};
 
                 let sel = null;
 
-                // region 每次 tick 重新拿按钮，并以“尺寸可见”为准
-                // 优先：se-quest-start
                 try {
                     sel = await utils.tools.waitForQ(PRI, utils.tools.isVisibleNow, opts);
                 } catch {
-                    // 回退：btn-silent-se
                     try {
                         sel = await utils.tools.waitForQ(SEC, utils.tools.isVisibleNow, opts);
                     } catch {
@@ -224,14 +220,12 @@
                 }
 
                 try {
-                    // 点击 10 轮或按钮消失
                     let n = 0;
                     while (n < 50) {
                         console.debug(`尝试中...第${n}次`);
                         await utils.tools.smartClick(sel);
                         n++;
                         await new Promise(r => setTimeout(r, 250 + utils.random()));
-                        // 按钮消失或进入页面变化则停止
                         if (!document.body.contains(sel) || !utils.tools.isVisibleNow(sel)) {
                             console.debug('页面不再存在该元素...结束...')
                             break;
@@ -243,27 +237,23 @@
                     if (n >= 50) console.debug('OK按钮点击重试达到50次上限');
                 } catch (e) {
                     console.debug('自动进入副本等待失败：', e?.message);
-                    // 兜底：监听插入后立即点击一次
                     utils.tools.ensureBtnObserver(async (b) => {
                         await utils.tools.smartClick(b);
                     });
                     setTimeout(utils.danger_actions.enter_raid, 500);
                 }
-                // endregion
             },
             async skip_scene() {
                 console.debug('尝试自动跳过剧情...');
                 if (!utils.urls.is_scene()) return;
 
                 try {
-                    // 每次 tick 重新拿按钮，并以“尺寸可见”为准
                     const btn = await utils.tools.waitForQ('.btn-skip', utils.tools.isVisibleNow, {
                         interval: 550,
                         timeout: 550
                     });
                     console.debug('查找跳过按钮：', btn);
 
-                    // 点击 10 轮或按钮消失
                     let n = 0;
                     while (n < 20) {
                         const target = document.querySelector('.btn-skip');
@@ -271,26 +261,23 @@
                         await utils.tools.smartClick(target);
                         n++;
                         await new Promise(r => setTimeout(r, 250 + utils.random()));
-                        // 按钮消失或进入页面变化则停止
                         const skip_btn = document.querySelector('.btn-scene-skip');
                         if (document.body.contains(skip_btn) || utils.tools.isVisibleNow(skip_btn)) break;
                     }
                     if (n >= 20) console.debug('跳过按钮点击重试达到上限');
 
-                    n = 0; // 重置计数器来尝试按下确认跳过
+                    n = 0;
                     while (n < 20) {
                         const confirm = document.querySelector('.btn-scene-skip');
                         if (!confirm) break;
                         await utils.tools.smartClick(confirm);
                         n++;
                         await new Promise(r => setTimeout(r, 250 + utils.random()));
-                        // 按钮消失或进入页面变化则停止
                         if (!document.body.contains(confirm) || !utils.tools.isVisibleNow(confirm)) break;
                     }
                     if (n >= 20) console.debug('确认跳过按钮点击重试达到20次上限');
                 } catch (e) {
                     console.debug('自动跳过剧情等待失败', e?.message);
-                    // 兜底：监听插入后立即点击一次
                     utils.tools.ensureBtnObserver(async (b) => {
                         await utils.tools.smartClick(b);
                     });
@@ -303,14 +290,12 @@
                 const is_multi = utils.urls.is_multi_raid();
                 if (!(is_raid || is_multi)) return;
                 try {
-                    // 每次 tick 重新拿按钮，并以“尺寸可见”为准
                     const btn = await utils.tools.waitForQ('.prt-start-direction', utils.tools.isVisibleNow, {
                         interval: 550,
                         timeout: 550
                     });
                     console.debug('查找自动按钮：', btn);
 
-                    // 点击 10 轮或按钮消失
                     let n = 0;
                     while (n < 25) {
                         console.debug('检测是否存在黑屏框架...');
@@ -331,7 +316,6 @@
                         await utils.tools.smartClick(black_bg);
                         n++;
                         await new Promise(r => setTimeout(r, 250 + utils.random()));
-                        // 确认是否已经存在自动提示
                         const btn_ready_auto = document.querySelector('.btn-ready-auto.anim-simple-fadein');
                         console.debug('检测是否存在启用自动元素...');
                         if (document.body.contains(btn_ready_auto) || utils.tools.isVisibleNow(btn_ready_auto)) {
@@ -342,7 +326,6 @@
                     if (n >= 25) console.debug('自动按钮点击重试达到25次上限');
                 } catch (e) {
                     console.debug(`自动战斗启动失败...${e}`);
-                    // 兜底：监听插入后立即点击一次
                     utils.tools.ensureBtnObserver(async (b) => {
                         await utils.tools.smartClick(b);
                     });
@@ -367,7 +350,6 @@
                 }
 
                 try {
-                    // 每次 tick 重新拿按钮，并以“尺寸可见”为准
                     const btn = await utils.tools.waitForQ('#js-btn-quick-summon', utils.tools.isVisibleNow, {
                         interval: 550,
                         timeout: 550
@@ -376,25 +358,17 @@
 
                     if (!btn.classList.contains('qs-recast') || btn.classList.contains('qs-disable')) return;
 
-                    // 点击 10 轮或按钮消失
                     const try_click = async function () {
                         let n = 0;
                         while (n < 5) {
-                            // 召唤列表按钮
                             const summon_list_btn = document.querySelector('.btn-command-summon');
-
-                            // 当前可用召唤按钮
                             const raw = document.querySelector('.prt-summon-list').querySelectorAll('.btn-summon-available');
                             const targets = utils.tools.sortBySummonCodeOrder(raw, config.danger_mode.auto_summon_prefer);
                             if (!targets || targets.length === 0) return;
 
                             let target = targets[0];
-                            // console.debug(target, targets.length, (target.getAttribute('summon-code') === '2040425000'));
-                            // 当前召唤石为000？
                             if (target.getAttribute('summon-code') === '2040425000') {
-                                // 取得主角buff
                                 const djeeta = document.querySelector('.lis-character0.btn-command-character');
-                                // 是否可以使用000
                                 const feather_enough = djeeta.querySelector('[data-status="7743_12"]') !== null;
                                 const triple_zero_black_wing = target.getAttribute('summon-require') === '9';
                                 const is_available_for_000 = triple_zero_black_wing || feather_enough;
@@ -424,11 +398,9 @@
                         }
                         if (n >= 5) console.debug('跳过按钮点击重试达到上限');
                     }
-
                     await try_click();
                 } catch (e) {
                     console.debug('自动投放召唤', e?.message);
-                    // 兜底：监听插入后立即点击一次
                     utils.tools.ensureBtnObserver(async (b) => {
                         await utils.tools.smartClick(b);
                     });
@@ -455,7 +427,6 @@
                         await utils.tools.smartClick(raid_list[0]);
                     }
                 };
-
                 await check_raid();
             },
         },
@@ -465,21 +436,17 @@
         },
         handle: (scenario, urlKey) => {
             if (typeof scenario.find !== 'function') {
-                // console.debug('handler stopped! scenario type is: ' + typeof scenario.find);
                 return;
             }
             const winObj = scenario.find(o => o['cmd'] === 'win');
             const winStatus = winObj
                 ? (winObj['is_last_raid'] === 1 ? 'raid' : 'battle')
                 : 'continue';
-            // console.debug('胜利状态判定为: ' + winStatus);
 
             if (winStatus === 'raid') {
-                // console.debug('副本胜利，尝试刷新来结束结算...');
                 utils.redirect.reload();
             }
             if (winStatus === 'battle') {
-                // console.debug('阶段性胜利，尝试跳转到阶段页面...');
                 utils.redirect.goto({
                     hash: '#quest/stage'
                 });
@@ -489,7 +456,6 @@
             const is_ability = urlKey === config.set[1];
             const is_summon = urlKey === config.set[3];
             const is_ability_or_summon = is_ability || is_summon;
-            // console.debug('检测是否为普通攻击...');
 
             // 启用了自动召唤
             if (config.danger_mode.auto_summon === true && is_summon === true) {
@@ -500,11 +466,20 @@
             if (is_normal_attack && config.refresh.attack === true) {
                 utils.redirect.reload();
             }
-            // console.debug(`当前操作${is_normal_attack ? '为' : '非'}普通攻击`);
 
-            // 检测当前技能释放是否存在于刷新列表
+            // 👈 新增：当前为召唤 且 允许召唤后刷新
+            if (is_summon && config.refresh.summon === true) {
+                utils.redirect.reload();
+            }
+
+            // 👈 新增：当前为任意技能 且 允许技能后刷新
+            if (is_ability && config.refresh.ability === true) {
+                utils.redirect.reload();
+            }
+
             if (is_ability_or_summon) {
-                const ability = scenario.find(o => o['cmd'] === 'ability');
+                // 修复原版找不到召唤的BUG
+                const ability = scenario.find(o => o['cmd'] === 'ability' || o['cmd'] === 'summon');
                 if (ability) {
                     const name = ability.name;
                     console.debug(`当前使用的技能名为：${name}，开始比对...`)
@@ -524,7 +499,7 @@
             return arr
                 .map(r => {
                     const hp = Number(r.boss_hp_width), mc = Number(r.member_count);
-                    const key = hp >= 80 ? [0, mc, -hp] : [1, -hp, mc]; // 先分组，再构造排序键
+                    const key = hp >= 80 ? [0, mc, -hp] : [1, -hp, mc];
                     return {r, key};
                 })
                 .filter(x => x.r.boss_hp_width >= config.danger_mode.hp_less_than && x.r.member_count <= config.danger_mode.member_more_than)
@@ -549,15 +524,10 @@
             }
         },
         inject: () => {
-            // region 短化引用
             const {urls, elements} = utils;
-            // endregion
 
-            // region 查找已存在的开关和面板，如果有，注销
             utils.ui.unload_panel();
-            // endregion
 
-            // region 设置CSS
             elements.body = document.querySelector('body');
             elements.body?.classList?.add('sierokarte');
             if (config.danger_mode.enable_layout_change) {
@@ -577,9 +547,7 @@
             if (config.option.enable_touch_mode) {
                 elements.body.classList.add('touch');
             }
-            // endregion
 
-            // region 创建面板 删除已存在的面板
             const panel = document.querySelector('.panel-container');
             if (panel) {
                 panel.remove();
@@ -593,20 +561,15 @@
                 footer.remove();
             }
             utils.panel.create(C, defaults);
-            // endregion
 
-            // region 禁用所有图片的抓取
             setTimeout(() => {
                 const images = document.querySelectorAll('img');
                 images.forEach(image => {
                     image.draggable = false;
                 })
             }, 1000)
-            // endregion
 
-            // region 当前页面为任意副本时
             if (urls.is_raid() || urls.is_multi_raid()) {
-                // console.debug('检测到副本，尝试执行副本插件...')
                 if (config.danger_mode.auto_auto) {
                     setTimeout(utils.danger_actions.tap_auto, 300);
                 }
@@ -623,35 +586,25 @@
                     utils.safe_actions.watch.contribution(utils.redirect.assist);
                 }
             }
-            // endregion
 
-            // region 当前页面为友召选择或副本选择
             if (urls.is_spsl()) {
                 if (config.danger_mode.auto_enter === true) {
                     console.debug('检测到副本，尝试执行自动进入副本插件...')
-                    utils.danger_actions.enter_raid().then(() => {
-                    });
+                    utils.danger_actions.enter_raid().then(() => {});
                 }
             }
-            // endregion
 
-            // region 当前页面为剧情
             if (urls.is_scene()) {
                 if (config.danger_mode.auto_skip_scene === true) {
-                    utils.danger_actions.skip_scene().then(() => {
-                    });
+                    utils.danger_actions.skip_scene().then(() => {});
                 }
             }
-            // endregion
 
-            // region 当前页面为多人副本选择
             if (urls.is_quest()) {
                 if (config.danger_mode.auto_raid_select === true) {
-                    utils.danger_actions.select_raid().then(() => {
-                    });
+                    utils.danger_actions.select_raid().then(() => {});
                 }
             }
-            // endregion
         },
         onLoad: () => {
             clearAllTimers();
@@ -666,8 +619,7 @@
             }
         },
         panel: {
-            create: (cfg /* Config 实例 */, defaultsObj /* 嵌套 defaults */) => {
-                // region 工具：深路径读取/写入（支持 a.b[0].c）
+            create: (cfg, defaultsObj) => {
                 const getByPath = (obj, path) => {
                     return path.replace(/\[(\d+)]/g, '.$1').split('.')
                         .reduce((o, k) => (o && k in o ? o[k] : undefined), obj);
@@ -682,9 +634,7 @@
                     }
                     cur[segs[segs.length - 1]] = val;
                 };
-                // endregion
 
-                // region 三个技能开关在数组 refresh.keywords 按 id 匹配
                 const getKeywordEnabled = (id) => {
                     const arr = cfg.state.refresh?.keywords || [];
                     const item = arr.find(it => it.id === id);
@@ -696,16 +646,13 @@
                     if (idx >= 0) {
                         arr[idx].enabled = !!enabled;
                     } else {
-                        // 兜底：若缺项则补齐结构
                         (cfg.state.refresh || (cfg.state.refresh = {}));
                         (cfg.state.refresh.keywords || (cfg.state.refresh.keywords = []));
                         cfg.state.refresh.keywords.push({id, enabled: !!enabled, keys: []});
                     }
                     cfg._save();
                 };
-                // endregion
 
-                // region UI 字段到嵌套路径/自定义 getter/setter的映射
                 const FIELDS = [
                     {
                         key: 'refresh_attack',
@@ -713,6 +660,26 @@
                         desc: '允许在普通攻击发起后进行刷新操作。如果同时启用了刷新替换为后退，则进行后退操作。',
                         type: 'bool',
                         path: 'refresh.attack',
+                        cls: 'refresh hidden',
+                        danger_mode: false,
+                    },
+                    // 👈 新增：召唤刷新选项
+                    {
+                        key: 'refresh_summon',
+                        label: '♼使用任意召唤',
+                        desc: '允许在使用任意召唤石发起后进行刷新操作。如果同时启用了刷新替换为后退，则进行后退操作。',
+                        type: 'bool',
+                        path: 'refresh.summon',
+                        cls: 'refresh hidden',
+                        danger_mode: false,
+                    },
+                    // 👈 新增：技能刷新选项
+                    {
+                        key: 'refresh_ability',
+                        label: '♼使用任意技能',
+                        desc: '允许在使用任意技能发起后进行刷新操作。如果同时启用了刷新替换为后退，则进行后退操作。',
+                        type: 'bool',
+                        path: 'refresh.ability',
                         cls: 'refresh hidden',
                         danger_mode: false,
                     },
@@ -748,7 +715,7 @@
                     },
                     {
                         key: 'refresh_yatima',
-                        label: '♼雅琪玛',
+                        label: '♼雅琪玛', // 👈 恢复原版UI文字
                         type: 'bool',
                         desc: '允许在【雅琪玛】【召唤】发起后进行刷新操作。如果同时启用了刷新替换为后退，则进行后退操作。',
                         get: () => getKeywordEnabled('yatima'),
@@ -1021,9 +988,6 @@
                         danger_mode: false,
                     },
                 ];
-                // endregion
-
-                // region UI：开关按钮
 
                 const createBtn = (text, position = 1, callback) => {
                     const btn = document.createElement('div');
@@ -1094,9 +1058,7 @@
                         })
                     })
                 }
-                // endregion
 
-                // region UI：面板框
                 const panel = document.createElement('div');
                 panel.classList.add('config-panel');
 
@@ -1125,9 +1087,7 @@
                 titleIcons.appendChild(titleReset);
                 titleIcons.appendChild(titleClose);
                 panel.appendChild(title);
-                // endregion
 
-                // region UI：即时刷新
                 const reloadRow = document.createElement('div');
                 reloadRow.classList.add('panel-reload');
                 const reloadLabel = document.createElement('label');
@@ -1143,9 +1103,7 @@
                 panel.appendChild(reloadRow);
 
                 utils.ui.separator.create(panel);
-                // endregion
 
-                // region UI：字段渲染
                 FIELDS.forEach(field => {
                     const row = document.createElement('div');
                     if (field.key === 'hunter_mode') {
@@ -1204,7 +1162,6 @@
                             if (reloadInput.checked) location.reload();
                         });
                     } else {
-                        // text
                         input.type = 'text';
                         input.value = curVal ?? '';
                         input.addEventListener('change', () => {
@@ -1228,15 +1185,11 @@
                     row.appendChild(input);
                     panel.appendChild(row);
                 });
-                // endregion
 
-                // region 按钮组
                 utils.ui.separator.create(panel);
                 const btn_group_func = document.createElement('div');
                 btn_group_func.classList.add('btn-group');
-                // endregion
 
-                // region 按钮 设置当前 hash 为跳转对象 -> redirect.current
                 const set_hash = document.createElement('button');
                 set_hash.textContent = '设置当前为跳转对象';
                 set_hash.addEventListener('click', () => {
@@ -1251,14 +1204,10 @@
 
                 btn_group_func.appendChild(set_hash);
                 btn_group_func.appendChild(print_drop_logs);
-                // endregion
 
-                // region 显示用按钮组
                 const btn_group = document.createElement('div');
                 btn_group.classList.add('btn-group');
-                // endregion
 
-                // region 按钮 显示或关闭选项
                 const btn_toggle_refresh = document.createElement('button');
                 btn_toggle_refresh.textContent = '显示/隐藏刷新选项'
                 btn_toggle_refresh.addEventListener('click', () => {
@@ -1267,9 +1216,7 @@
                     })
                 })
                 btn_group.appendChild(btn_toggle_refresh);
-                // endregion
 
-                // region 按钮 显示或关闭参数
                 const btn_toggle_delay_param = document.createElement('button');
                 btn_toggle_delay_param.textContent = '显示/隐藏延迟参数'
                 btn_toggle_delay_param.addEventListener('click', () => {
@@ -1317,9 +1264,7 @@
                 waw.appendChild(warningAudioSetButton);
 
                 panel.appendChild(waw);
-                // endregion
 
-                // region 按钮 显示或关闭重定向
                 const btn_toggle_redirect = document.createElement('button');
                 btn_toggle_redirect.textContent = '显示/隐藏重定向选项'
                 btn_toggle_redirect.addEventListener('click', () => {
@@ -1328,9 +1273,7 @@
                     })
                 })
                 btn_group.appendChild(btn_toggle_redirect);
-                // endregion
 
-                // region 按钮 显示或关闭重定向
                 const btn_toggle_options = document.createElement('button');
                 btn_toggle_options.textContent = '显示/隐藏配置选项'
                 btn_toggle_options.addEventListener('click', () => {
@@ -1339,11 +1282,7 @@
                     })
                 })
                 btn_group.appendChild(btn_toggle_options);
-                // endregion
 
-                // region 书签管理
-                // 书签本体
-                // 面板书签管理部分
                 const bm_frame = document.createElement('div');
                 bm_frame.classList.add('panel-row');
                 bm_frame.classList.add('redirect');
@@ -1400,12 +1339,6 @@
                     const bookmark_frame = document.createElement('div');
                     bookmark_frame.classList.add('bookmark');
 
-                    /* bookmark structure
-                        {
-                            name: "主页",
-                            hash: "#mypage",
-                        }
-                    */
                     config.bookmark.bookmarks.forEach((bookmark, index) => {
                         const item = document.createElement('div');
                         item.classList.add('bookmark-item');
@@ -1430,7 +1363,6 @@
                     document.body.appendChild(bookmark_frame);
                 }
 
-                // region 注册导入导出
                 const imex_frame = document.createElement('div');
                 imex_frame.classList.add('bm-content');
                 const import_file = document.createElement('input');
@@ -1466,26 +1398,18 @@
 
                 bm_frame.appendChild(imex_frame);
 
-                // endregion
-
-                // region 向文档注册类
                 document.body.classList.add('sierokarte');
-                // 插入功能性按钮组
                 panel.appendChild(btn_group_func);
-                // 插入显示类按钮组
+
                 utils.ui.separator.create(panel);
                 panel.appendChild(btn_group);
-                // 插入书签管理
+
                 panel.appendChild(bm_frame);
-                // 阻止面板冒泡
+
                 panel.addEventListener('click', (e) => {
                     e.stopPropagation();
                 })
-                // endregion
 
-                // endregion
-
-                // region 创建页脚
                 if (config.danger_mode.enable_layout_change && !navigator.userAgent.includes('iOS')) {
                     const footer = document.createElement('div');
                     footer.classList.add('siero-footer');
@@ -1556,29 +1480,21 @@
 
                     wrapper.appendChild(footer);
                 }
-                // endregion
 
-                // region 插入面板动画
-                // 插入容器
                 const panel_container = document.createElement('div');
                 panel_container.classList.add('panel-container');
                 panel_container.classList.add('fade');
                 panel_container.classList.add('deactivated');
-                // 阻止首次打开页面时播放动画
                 panel_container.classList.add('hidden');
 
-                // 插入背景 允许背景关闭面板
                 const panel_bg = document.createElement('div');
                 panel_bg.classList.add('panel-background');
                 panel_bg.addEventListener('click', () => {
                     panel_container.classList.toggle('deactivated');
                 })
 
-                // 插入面板到背景
                 panel_bg.appendChild(panel);
-                // 插入背景到容器
                 panel_container.appendChild(panel_bg);
-                // 插入容器到文档身体
                 document.body.appendChild(panel_container);
             }
         },
@@ -1607,11 +1523,10 @@
             },
             goto: ({hash = config.redirect.current, force = false, immediately = false} = {}) => {
                 const delay = immediately ? 0 : utils.random();
-                //console.debug(`延迟随机完毕...${delay}`);
                 setTimeout(() => {
                     if (force) {
                         if (hash && hash.startsWith('#')) {
-                            location.hash = hash.slice(1); // 或者：location.href = hash;
+                            location.hash = hash.slice(1);
                         } else if (hash) {
                             window.open(`${location.origin}/${hash}`, '_self');
                         } else {
@@ -1649,7 +1564,7 @@
                 }
             },
             play: {
-                getAudioURL: (target /** @typeParam int*/) => {
+                getAudioURL: (target) => {
                     const padded = String(target).padStart(2, '0');
                     return `https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/warning_${padded}.mp3`
                 },
@@ -1674,11 +1589,9 @@
                         return v === "0" || Number(v) === 0;
                     };
 
-                    // 若一开始就是 0，立即触发
                     if (isZero()) {
                         callback();
-                        return () => {
-                        }; // no-op unwatch
+                        return () => {};
                     }
 
                     const obs = new MutationObserver(() => {
@@ -1694,7 +1607,7 @@
                         subtree: true
                     });
 
-                    return () => obs.disconnect(); // 返回取消监视函数
+                    return () => obs.disconnect();
                 },
                 async contribution(callback) {
                     const el = await utils.tools.waitForQ('.lis-user.player > .txt-point');
@@ -1710,11 +1623,9 @@
                         return Number(v) >= config.danger_mode.contribution;
                     };
 
-                    // 若一开始就是 0，立即触发
                     if (biggerThan()) {
                         callback();
-                        return () => {
-                        }; // no-op unwatch
+                        return () => {};
                     }
 
                     const obs = new MutationObserver(() => {
@@ -1730,7 +1641,7 @@
                         subtree: true
                     });
 
-                    return () => obs.disconnect(); // 返回取消监视函数
+                    return () => obs.disconnect();
                 },
                 async bossDown(callback) {
                     await utils.safe_actions.watch.watchPop('.pop-usual.pop-rematch-fail.pop-show', callback)
@@ -1742,11 +1653,9 @@
                     const root = await utils.tools.waitForQ('#mobage-game-container > div[id^="pop"]:not([id="pop-chat"])');
                     if (!root) throw new Error("未找到弹窗。");
 
-                    // 若一开始就已存在，立即触发
                     if (root.querySelector(selector)) {
                         callback(root.querySelector(selector));
-                        return () => {
-                        };
+                        return () => {};
                     }
 
                     const observer = new MutationObserver(() => {
@@ -1762,7 +1671,7 @@
                         subtree: true
                     });
 
-                    return () => observer.disconnect(); // 取消监视
+                    return () => observer.disconnect();
                 },
             },
         },
@@ -1803,20 +1712,13 @@
                 return indexed.map(x => x.el);
             },
             exportJSON(obj, filename = "data.json") {
-                // 序列化并缩进
                 const jsonStr = JSON.stringify(obj, null, 2);
-
-                // 创建 blob
                 const blob = new Blob([jsonStr], {type: "application/json"});
-
-                // 创建下载链接
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
                 a.download = filename;
                 a.click();
-
-                // 释放 URL 对象
                 URL.revokeObjectURL(url);
             },
             observeClass(targetEl, targetClass, onMatch) {
@@ -1851,13 +1753,13 @@
             },
             parseRewards(payload, groupBy = "key") {
                 const rl = payload?.reward_list ?? {};
-                const acc = new Map(); // key or id -> item
+                const acc = new Map();
 
                 for (const [slot, v] of Object.entries(rl)) {
-                    if (Array.isArray(v)) continue;              // 该档位无掉落
+                    if (Array.isArray(v)) continue;
                     if (v && typeof v === "object") {
                         for (const [k, item] of Object.entries(v)) {
-                            const gid = groupBy === "id" ? item.id : k;   // 选择聚合维度
+                            const gid = groupBy === "id" ? item.id : k;
                             if (!acc.has(gid)) {
                                 acc.set(gid, {
                                     key: k,
@@ -1876,7 +1778,6 @@
                         }
                     }
                 }
-                // console.debug(Array.from(acc.values()));
                 return Array.from(acc.values());
             },
             drop_notify: async (battle_date, data) => {
@@ -1887,6 +1788,7 @@
                 let title = '[工坊]获得蓝箱道具';
                 let body = '';
                 let icon = icon_url.mine;
+                
                 result.forEach(r => {
                     const t = r.name
                     const blue = r.by_slot.hasOwnProperty(11);
@@ -1895,7 +1797,7 @@
                             body += `${blue ? '[蓝箱]' : ''} ${t} x ${r.count}\n`;
                         } else {
                             icon = icon_url.gold_brick;
-                            title.replace('蓝箱道具', '绯绯金')
+                            title = title.replace('蓝箱道具', '绯绯金'); // 👈 修复了replace不生效的BUG
                             body += `${blue ? '[蓝箱]' : ''} 获得了绯绯金！${t} x ${r.count}`;
                         }
                     }
@@ -1910,7 +1812,6 @@
                     if (b && utils.tools.isVisibleNow(b)) runOnce(b);
                 });
                 mo.observe(document.body, {childList: true, subtree: true});
-                // 30 秒后自动关闭
                 setTimeout(() => mo.disconnect(), 30000);
             },
             tryParseJSON(s) {
@@ -1929,14 +1830,14 @@
             },
             register_scroller() {
                 new MouseScroller(document.querySelector('.SdEyhW_kE0xoDznTZ5Wr-'), {
-                    direction: 'y',      // 可选: 'x', 'y', 'both'
-                    damping: 0.95,          // 惯性阻尼系数 (0 ~ 1)
-                    minVelocity: 0.5        // 惯性停止的最小速度
+                    direction: 'y',
+                    damping: 0.95,
+                    minVelocity: 0.5
                 });
             },
             async smartClick(el, idx = 1) {
                 setTimeout(() => {
-                    const tap = $.Event('tap'); // 每次触发前 new
+                    const tap = $.Event('tap');
                     $(el).trigger(tap);
                 }, 250 * idx);
             },
@@ -1956,11 +1857,9 @@
         ui: {
             separator: {
                 create(parent) {
-                    // 添加分隔行
                     const separator = document.createElement('div');
                     separator.classList.add('separator');
                     parent.appendChild(separator);
-                    // endregion
                 }
             },
             unload_panel: () => {
@@ -1983,27 +1882,22 @@
                 return defaults.set.includes(utils.urls.get_xhr_type(url));
             },
             is_home: () => {
-                // console.debug('检测当前页面为主页：', result);
                 return location.href.includes('#mypage');
-            }, // 友召选择界面？
+            },
             is_json: (url) => {
-                // console.debug('检测url，对象为：', url);
                 return url.pathname.endsWith('.json');
-            }, // 剧情界面？
+            },
             is_list_request: (url) => {
                 return url.href.includes('rest/quest/assist/search/assist_list');
-            }, // 副本界面？
+            },
             is_multi_raid: (url = new URL(location.href)) => {
-                // console.debug(`检测${url.href}页面为多人副本：`, result);
                 return url.href.includes('/#raid_multi/');
             },
             is_quest: () => {
-                // console.debug('检测当前页面为副本选择界面：', result);
                 return location.href.endsWith('#quest/assist');
             },
             is_raid: (url = new URL(location.href)) => {
                 const href = url.href;
-                // console.debug(`检测${href}当前页面为单人副本：`, result);
                 return href.includes('#raid/') && !href.includes('#raid_multi/');
             },
             is_recycle: (url = new URL(location.href)) => {
@@ -2013,15 +1907,12 @@
                 return url.href.includes('#decompose');
             },
             is_result: (url = new URL(location.href)) => {
-                // console.debug(`检测${url.href}页面为结算页面：`, result);
                 return url.href.includes('#result');
             },
             is_balancing: (url = new URL(location.href)) => {
-                // console.debug(`检测${url.href}请求结果是否为副本结果`, result);
                 return url.href.includes('/resultmulti/content/index');
             },
             is_scene: () => {
-                // console.debug('检测当前页面为剧情界面：', result);
                 return location.href.includes('scene');
             },
             is_spsl: () => {
@@ -2054,7 +1945,7 @@
                 direction: options.direction || 'both',
                 damping: options.damping ?? 0.95,
                 minVelocity: options.minVelocity ?? 0.5,
-                maxVelocity: options.maxVelocity ?? 100, // ✅ 限速
+                maxVelocity: options.maxVelocity ?? 100,
             };
 
             this.isDragging = false;
@@ -2121,7 +2012,7 @@
             this.container.style.cursor = 'default';
 
             const now = Date.now();
-            const dt = now - this._lastMoveTime || 16; // 防0除
+            const dt = now - this._lastMoveTime || 16;
             if (this.options.direction !== 'y') {
                 this.velocityX = (this.container.scrollLeft - this._lastMoveX) / dt * 16;
                 this.velocityX = Math.max(Math.min(this.velocityX, this.options.maxVelocity), -this.options.maxVelocity);
@@ -2207,14 +2098,12 @@
     };
 
     const clearAllTimers = () => {
-        // 清理垃圾
         document.querySelectorAll('body > script').forEach((i) => {
             i.remove()
         });
         document.querySelectorAll('body > iframe').forEach((i) => {
             i.remove()
         });
-        // 清理任务
         for (const id of timeouts) _ct(id);
         timeouts.clear();
         for (const id of intervals) _ci(id);
@@ -2223,7 +2112,6 @@
         rafs.clear();
     };
 
-    // 统一的“地址变化”事件
     (() => {
         const fire = () => window.dispatchEvent(new Event('locationchange'));
         const {pushState, replaceState} = history;
@@ -2238,7 +2126,6 @@
         window.addEventListener('popstate', fire);
         window.addEventListener('hashchange', fire);
     })();
-
     // endregion
 
     // region 拦截 XHR
@@ -2246,7 +2133,7 @@
     const _open = XHR.prototype.open;
     const _send = XHR.prototype.send;
 
-    XHR.prototype.open = function (method, url, ...rest) {// 记录
+    XHR.prototype.open = function (method, url, ...rest) {
         return _open.call(this, method, url, ...rest);
     };
 
@@ -2254,12 +2141,9 @@
         this.addEventListener('readystatechange', () => {
             if (this.readyState !== 4) return;
             try {
-                // region 标准检测
                 if (this.status !== 200 || this.response === 'null') return;
-                //console.debug(this);
                 const targetUrl = new URL(this.responseURL);
 
-                // UID
                 if (uid === 0) {
                     utils.urls.has_uid(targetUrl);
                 }
@@ -2271,18 +2155,13 @@
                     && !targetUrl.pathname.includes('socket')
                     && !targetUrl.hostname.includes('sound')
                 ;
-                // console.debug(`${targetUrl.hostname}，碧蓝幻想动态源：${is_gbf_origin}`);
                 if (is_gbf_origin === false) return;
-                // console.debug('检测到非缓存内容，进行检查...');
-                // endregion
 
                 const raw = this.responseType === 'json'
                     ? this.response
                     : utils.tools.tryParseJSON(this.responseText);
 
-                // region 1) 分发 battle 数据
                 const is_battle_json = utils.urls.is_battle_type(targetUrl);
-                // console.debug(`是否为需要检测的数据：${is_battle_json}`);
                 if (is_battle_json) {
                     const scenario = raw.scenario ?? raw;
                     window.dispatchEvent(new CustomEvent('sierokarte-xhr', {
@@ -2290,55 +2169,44 @@
                     }));
                     return;
                 }
-                // endregion
 
-                // region 检测掉落
                 if (config.option.enable_drop_notify) {
                     if (utils.urls.is_balancing(targetUrl)) {
                         const data = JSON.parse(this.response)?.option;
                         if (!data) return;
-                        utils.tools.drop_notify(new Date().toISOString(), data).then(() => {
-                        });
+                        utils.tools.drop_notify(new Date().toISOString(), data).then(() => {});
                         return;
                     }
                 }
-                // endregion
 
                 const adjusted = {
-                    replaced: raw, //utils.safe_actions.translate(raw, translations),
+                    replaced: raw,
                     asString: this.responseText,
                 };
-                // adjusted.asString = JSON.stringify(adjusted.replaced, null, 4);
 
-                // region 2) 改写列表响应
                 if (config.danger_mode.filtering) {
                     if (utils.urls.is_list_request(targetUrl)) {
                         adjusted.replaced = {
                             assist_raids_data: utils.handle_list(raw.assist_raids_data)
                         };
                         adjusted.asString = JSON.stringify(adjusted.replaced);
-                        // console.debug(`列表替换后长度为：${replaced.assist_raids_data.length}`);
                     }
                 }
 
-                // 影子覆盖，只读但可被实例级 getter 遮蔽
                 try {
                     Object.defineProperty(this, 'responseText', {
                         get() {
                             return adjusted.asString;
                         }
                     });
-                } catch {
-                }
+                } catch {}
                 try {
                     Object.defineProperty(this, 'response', {
                         get() {
                             return this.responseType === 'json' ? adjusted.replaced : adjusted.asString;
                         }
                     });
-                } catch {
-                }
-                // endregion
+                } catch {}
             } catch (e) {
                 console.error('patch error:', e);
             }
