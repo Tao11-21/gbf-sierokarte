@@ -30,33 +30,38 @@ html::-webkit-scrollbar, div::-webkit-scrollbar {
     }
 
     .floating {
-        position: fixed;
-        z-index: 999991;
-        width: 3rem;
-        height: 3rem;
-        font-size: 1.8rem;
-        display: flex;
-        align-content: center;
-        align-items: center;
-        justify-content: center;
-        right: calc((6rem / 2) - 1.5rem);
-        line-height: 3rem;
-        text-align: center;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 1);
-        color: rgb(100, 149, 237);
-        cursor: pointer;
-        user-select: none;
-        transition: all 1s;
+    position: fixed;
+    z-index: 999991;
+    
+    /* 尺寸完全匹配你的图片 */
+    width: 87px;
+    height: 53px;
+    font-size: 0; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* 位置：默认在右侧，你可以根据自己的屏幕微调 right 和 bottom */
+    right: 10px; 
+    bottom: 10px;
+    
+    /* 👇 核心：背景只加载图片，完全透明，不留边框 👇 */
+    background: url('https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/my_btn.png?v=2') no-repeat center center !important;
+    background-size: contain !important;
+    background-color: transparent !important; /* 强制背景透明 */
+    border: none !important;
+    box-shadow: none !important;
+    
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.3s ease;
 
-        &:hover {
-            background: rgb(100, 149, 237);
-            color: rgba(255, 255, 255, 1);
-        }
-        &.rotate:hover {
-            transform: rotate(90deg);
-        }
+    /* 悬停效果：轻微放大，绝不出现底色 */
+    &:hover {
+        transform: scale(1.05);
+        background-color: transparent !important;
     }
+}
 
     .bookmark {
         font-family: 'ariark-maru', sans-serif;
