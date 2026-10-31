@@ -33,30 +33,34 @@ html::-webkit-scrollbar, div::-webkit-scrollbar {
     position: fixed;
     z-index: 999991;
     
-    /* 尺寸完全匹配你的图片 */
+    /* 👇 你的图片尺寸 👇 */
     width: 87px;
     height: 53px;
-    font-size: 0; 
+    font-size: 0; /* 隐藏原版文字 */
     display: flex;
+    align-content: center;
     align-items: center;
     justify-content: center;
     
-    /* 位置：默认在右侧，你可以根据自己的屏幕微调 right 和 bottom */
-    right: 10px; 
-    bottom: 10px;
+    /* 👇 保留原版的靠右计算方式 👇 */
+    right: calc((6rem / 2) - 1.5rem); 
     
-    /* 👇 核心：背景只加载图片，完全透明，不留边框 👇 */
-    background: url('https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/my_btn.png?v=2') no-repeat center center !important;
-    background-size: contain !important;
-    background-color: transparent !important; /* 强制背景透明 */
+    /* 去掉圆角，因为是不规则图片 */
+    border-radius: 0; 
+    
+    /* 👇 替换为你的图片链接，完全透明背景 👇 */
+    background: url('https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/my_btn.png?v=3') no-repeat center center !important;
+    background-size: contain !important; /* 等比例缩放 */
+    background-color: transparent !important; /* 强制透明 */
     border: none !important;
     box-shadow: none !important;
     
+    color: rgb(100, 149, 237); /* 保留这个以防万一 */
     cursor: pointer;
     user-select: none;
     transition: all 0.3s ease;
 
-    /* 悬停效果：轻微放大，绝不出现底色 */
+    /* 悬停效果：轻微放大 */
     &:hover {
         transform: scale(1.05);
         background-color: transparent !important;
