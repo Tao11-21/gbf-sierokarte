@@ -231,7 +231,7 @@
                             break;
                         } else if (
                             document.querySelector('#pop-c-a-i')?.children.length > 0 || 
-                            document.querySelector('input[placeholder*="認証文字"]') !== null // 👈 验证码检测
+                            document.querySelector('input[placeholder*="認証文字"]') !== null // 验证码检测
                         ) {
                             console.warn("🚨 触发风控拦截或图像验证码！播放报警！");
                             await utils.safe_actions.play.warning(); 
@@ -482,16 +482,23 @@
             }
 
             if (is_ability_or_summon) {
-                // 修复原版找不到召唤的BUG
-                const ability = scenario.find(o => o['cmd'] === 'ability' || o['cmd'] === 'summon');
-                if (ability) {
-                    const name = ability.name;
-                    console.debug(`当前使用的技能名为：${name}，开始比对...`)
+                // 👈 修复点：把所有相关的 ability 和 summon 都找出来，而不是只找第一个
+                const actions = scenario.filter(o => o['cmd'] === 'ability' || o['cmd'] === 'summon');
+                
+                if (actions.length > 0) {
+                    // 把所有的名字提取出来组成一个数组
+                    const names = actions.map(o => o.name);
+                    console.debug(`当前使用的技能/召唤名为：${names.join(' | ')}，开始比对...`);
+
                     config.refresh.keywords.some((item) => {
-                        console.debug(`当前比较对象为${item.id}, ${item.enabled}, ${item.keys.join(', ')}`)
+                        console.debug(`当前比较对象为${item.id}, ${item.enabled}, ${item.keys.join(', ')}`);
+
                         if (item.enabled) {
-                            console.debug(`当前比较结果为${item.keys.includes(name)}`);
-                            if (item.keys.includes(name)) {
+                            // 👈 修复点：只要数组里有任意一个名字跟配置里的 keys 匹配，就触发刷新
+                            const match = names.some(n => item.keys.includes(n));
+                            console.debug(`当前比较结果为${match}`);
+                            
+                            if (match) {
                                 utils.redirect.reload();
                             }
                         }
@@ -1258,13 +1265,13 @@
                 warningAudioSelector.id = 'warningAudioSelector';
                 const warningAudioList = [
                     {
-                        id: 1, name: '哈雪大帽险'
+                        id: 1, name: '不得不哈'
                     },
                     {
-                        id: 2, name: '猝死闹铃（希哥）'
+                        id: 2, name: '夜袭的小曲'
                     },
                     {
-                        id: 3, name: '露露版神曼波'
+                        id: 3, name: '圆神'
                     },
                 ]
                 warningAudioList.forEach((item) => {
