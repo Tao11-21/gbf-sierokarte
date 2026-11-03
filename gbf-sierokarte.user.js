@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name                榭洛科特工坊
-// @version             0.3.73
+// @version             0.3.74
 // @author              Alk
 // @license             GPL-3.0
 // @description         榭洛科特工坊 -
@@ -22,7 +22,7 @@
 (function () {
     'use strict';
 
-    const version = '0.3.73';
+    const version = '0.3.74';
 
     // region 配置默认值
     const defaults = {
@@ -482,7 +482,7 @@
             }
 
             if (is_ability_or_summon) {
-                // 👈 修复点：把所有相关的 ability 和 summon 都找出来，而不是只找第一个
+                // 把所有相关的 ability 和 summon 都找出来，而不是只找第一个
                 const actions = scenario.filter(o => o['cmd'] === 'ability' || o['cmd'] === 'summon');
                 
                 if (actions.length > 0) {
@@ -494,7 +494,7 @@
                         console.debug(`当前比较对象为${item.id}, ${item.enabled}, ${item.keys.join(', ')}`);
 
                         if (item.enabled) {
-                            // 👈 修复点：只要数组里有任意一个名字跟配置里的 keys 匹配，就触发刷新
+                            // 只要数组里有任意一个名字跟配置里的 keys 匹配，就触发刷新
                             const match = names.some(n => item.keys.includes(n));
                             console.debug(`当前比较结果为${match}`);
                             
@@ -593,7 +593,7 @@
                 utils.safe_actions.watch.bossDown(utils.redirect.reload).then(r => {});
                 utils.safe_actions.watch.errorPop(utils.redirect.reload).then(r => {});
 
-                // 全局监听验证码，一旦出现就响铃并停止操作
+                // 全局监听验证码，一旦出现就响铃并停止操作（优化版）
                 utils.safe_actions.watch.captcha(async () => {
                     console.warn("🚨 出现画像验证码！请立刻人工接管！");
                     await utils.safe_actions.play.warning();
@@ -948,7 +948,7 @@
                         cls: 'danger',
                         danger_mode: true,
                     },
-                    // 👈 新增：一键副本切换总开关
+                    // 一键副本切换总开关
                     {
                         key: 'enable_auto_farm_switch',
                         label: '⚠一键副本切换(点击+进本)',
@@ -1607,16 +1607,27 @@
             },
             watch: {
                 async captcha(callback) {
+                    let isTriggered = false;
+                    // 👈 优化：只监听特定弹窗的容器，不再全屏扫描 textContent
                     const checkCaptcha = () => {
-                        const isCaptcha = document.body.textContent.includes('画像認証') || 
-                                          document.querySelector('input[placeholder*="認証文字"]');
-                        if (isCaptcha) {
-                            callback(); 
+                        if (isTriggered) return;
+                        
+                        const popup = document.querySelector('#pop-c-a-i');
+                        if (popup) {
+                            // 检查弹窗里面有没有验证码图片或输入框
+                            const isCaptcha = popup.querySelector('input[placeholder*="認証文字"]') || 
+                                              popup.textContent.includes('画像認証');
+                            if (isCaptcha) {
+                                isTriggered = true;
+                                callback(); 
+                            }
                         }
                     };
 
                     const obs = new MutationObserver(checkCaptcha);
-                    obs.observe(document.body, { childList: true, subtree: true });
+                    // 👈 缩小监听范围，只监听弹窗所在的容器
+                    const root = document.querySelector('#mobage-game-container') || document.body;
+                    obs.observe(root, { childList: true, subtree: true });
                     
                     checkCaptcha(); 
                     
