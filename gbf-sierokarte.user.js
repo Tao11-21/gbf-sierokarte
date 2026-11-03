@@ -233,8 +233,8 @@
                             document.querySelector('#pop-c-a-i')?.children.length > 0 || 
                             document.querySelector('input[placeholder*="認証文字"]') !== null // 验证码检测
                         ) {
-                            console.warn("🚨 触发风控拦截或图像验证码！播放报警！");
-                            await utils.safe_actions.play.warning(); 
+                            console.warn("🚨 触发风控拦截或图像验证码！停止点击！");
+                            // 注意：报警音频由全局监控统一负责，这里不再重复播放
                             break; 
                         }
                     }
@@ -1014,7 +1014,7 @@
                         desc: '生成随机延迟的倍率。',
                         type: 'number',
                         path: 'delay.ratio.hunt',
-                        cls: 'danger hidden',
+                        cls: 'params danger hidden', // 👈 加上了 params，让它跟着延迟参数一起显示
                         danger_mode: false,
                     },
                 ];
@@ -1608,7 +1608,7 @@
             watch: {
                 async captcha(callback) {
                     let isTriggered = false;
-                    // 👈 优化：只监听特定弹窗的容器，不再全屏扫描 textContent
+                    // 优化：只监听特定弹窗的容器，不再全屏扫描 textContent
                     const checkCaptcha = () => {
                         if (isTriggered) return;
                         
@@ -1625,7 +1625,7 @@
                     };
 
                     const obs = new MutationObserver(checkCaptcha);
-                    // 👈 缩小监听范围，只监听弹窗所在的容器
+                    // 缩小监听范围，只监听弹窗所在的容器
                     const root = document.querySelector('#mobage-game-container') || document.body;
                     obs.observe(root, { childList: true, subtree: true });
                     
