@@ -1,17 +1,17 @@
 // ==UserScript==
 // @name                榭洛科特工坊
-// @version             0.3.72
+// @version             0.3.73
 // @author              Alk
 // @license             GPL-3.0
 // @description         榭洛科特工坊 -
 // @match               https://*.granbluefantasy.jp/*
 // @match               https://gbf.game.mbga.jp/*
-// @resource            sierokarte https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/gbf_custom.css
+// @resource            sierokarte https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/gbf_custom.css?v=3
 // @grant               GM_getResourceText
 // @grant               GM_addStyle
 // @run-at              document-start
 // @namespace           https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/gbf-sierokarte.user.js
-// @icon                https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/sierokarte.png
+// @icon                https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/sierokarte.png?v=2
 // @downloadURL         https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/gbf-sierokarte.user.js
 // @updateURL           https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/gbf-sierokarte.user.js
 // @supportURL          https://www.neko-tail.wang/
@@ -22,15 +22,15 @@
 (function () {
     'use strict';
 
-    const version = '0.3.72';
+    const version = '0.3.73';
 
     // region 配置默认值
     const defaults = {
         refresh: {
             use_back: false,
             attack: true,
-            summon: false,  // 👈 新增：召唤后刷新
-            ability: false, // 👈 新增：技能后刷新
+            summon: false,  // 召唤后刷新
+            ability: false, // 技能后刷新
             keywords: [
                 {
                     id: 'koenig_dekret',
@@ -50,7 +50,7 @@
                 {
                     id: 'yatima',
                     enabled: false,
-                    keys: ['ヤチマ'] // 👈 恢复原版雅琪玛
+                    keys: ['ヤチマ']
                 },
                 {
                     id: 'two_platoons',
@@ -163,7 +163,7 @@
 
     // region 固定链接
     const icon_url = {
-        mine: 'https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/sierokarte.png',
+        mine: 'https://cdn.jsdelivr.net/gh/Tao11-21/gbf-sierokarte@main/sierokarte.png?v=2',
         gold_brick: 'https://gbf.wiki/images/5/5b/Gold_Brick_square.jpg',
     };
     // endregion
@@ -229,9 +229,13 @@
                         if (!document.body.contains(sel) || !utils.tools.isVisibleNow(sel)) {
                             console.debug('页面不再存在该元素...结束...')
                             break;
-                        } else if (document.querySelector('#pop-c-a-i')?.children.length > 0) {
-                            await utils.safe_actions.play.warning();
-                            break;
+                        } else if (
+                            document.querySelector('#pop-c-a-i')?.children.length > 0 || 
+                            document.querySelector('input[placeholder*="認証文字"]') !== null // 👈 验证码检测
+                        ) {
+                            console.warn("🚨 触发风控拦截或图像验证码！播放报警！");
+                            await utils.safe_actions.play.warning(); 
+                            break; 
                         }
                     }
                     if (n >= 50) console.debug('OK按钮点击重试达到50次上限');
@@ -467,12 +471,12 @@
                 utils.redirect.reload();
             }
 
-            // 👈 新增：当前为召唤 且 允许召唤后刷新
+            // 当前为召唤 且 允许召唤后刷新
             if (is_summon && config.refresh.summon === true) {
                 utils.redirect.reload();
             }
 
-            // 👈 新增：当前为任意技能 且 允许技能后刷新
+            // 当前为任意技能 且 允许技能后刷新
             if (is_ability && config.refresh.ability === true) {
                 utils.redirect.reload();
             }
@@ -582,6 +586,12 @@
                 utils.safe_actions.watch.bossDown(utils.redirect.reload).then(r => {});
                 utils.safe_actions.watch.errorPop(utils.redirect.reload).then(r => {});
 
+                // 全局监听验证码，一旦出现就响铃并停止操作
+                utils.safe_actions.watch.captcha(async () => {
+                    console.warn("🚨 出现画像验证码！请立刻人工接管！");
+                    await utils.safe_actions.play.warning();
+                });
+
                 if (config.danger_mode.auto_raid_select === true) {
                     utils.safe_actions.watch.contribution(utils.redirect.assist);
                 }
@@ -663,7 +673,6 @@
                         cls: 'refresh hidden',
                         danger_mode: false,
                     },
-                    // 👈 新增：召唤刷新选项
                     {
                         key: 'refresh_summon',
                         label: '♼使用任意召唤',
@@ -673,7 +682,6 @@
                         cls: 'refresh hidden',
                         danger_mode: false,
                     },
-                    // 👈 新增：技能刷新选项
                     {
                         key: 'refresh_ability',
                         label: '♼使用任意技能',
@@ -715,7 +723,7 @@
                     },
                     {
                         key: 'refresh_yatima',
-                        label: '♼雅琪玛', // 👈 恢复原版UI文字
+                        label: '♼雅琪玛',
                         type: 'bool',
                         desc: '允许在【雅琪玛】【召唤】发起后进行刷新操作。如果同时启用了刷新替换为后退，则进行后退操作。',
                         get: () => getKeywordEnabled('yatima'),
@@ -930,6 +938,21 @@
                         desc: '筛选模式下，根据血量低在前进行排序。',
                         type: 'bool',
                         path: 'danger_mode.filtering_by_asc',
+                        cls: 'danger',
+                        danger_mode: true,
+                    },
+                    // 👈 新增：一键副本切换总开关
+                    {
+                        key: 'enable_auto_farm_switch',
+                        label: '⚠一键副本切换(点击+进本)',
+                        desc: '勾选此选项将同时开启下方的【启用自动点击】和【启用自动进入副本】；取消勾选则同时关闭。',
+                        type: 'bool',
+                        get: () => !!(config.danger_mode.auto_auto && config.danger_mode.auto_enter),
+                        set: (v) => {
+                            config.danger_mode.auto_auto = v;
+                            config.danger_mode.auto_enter = v;
+                            cfg._save();
+                        },
                         cls: 'danger',
                         danger_mode: true,
                     },
@@ -1235,13 +1258,13 @@
                 warningAudioSelector.id = 'warningAudioSelector';
                 const warningAudioList = [
                     {
-                        id: 1, name: '不得不哈'
+                        id: 1, name: '哈雪大帽险'
                     },
                     {
-                        id: 2, name: '夜袭小曲'
+                        id: 2, name: '猝死闹铃（希哥）'
                     },
                     {
-                        id: 3, name: '圆神'
+                        id: 3, name: '露露版神曼波'
                     },
                 ]
                 warningAudioList.forEach((item) => {
@@ -1576,6 +1599,23 @@
                 }
             },
             watch: {
+                async captcha(callback) {
+                    const checkCaptcha = () => {
+                        const isCaptcha = document.body.textContent.includes('画像認証') || 
+                                          document.querySelector('input[placeholder*="認証文字"]');
+                        if (isCaptcha) {
+                            callback(); 
+                        }
+                    };
+
+                    const obs = new MutationObserver(checkCaptcha);
+                    obs.observe(document.body, { childList: true, subtree: true });
+                    
+                    checkCaptcha(); 
+                    
+                    return () => obs.disconnect();
+                },
+                
                 async enemyHP(callback) {
                     const el = await utils.tools.waitForQ('.btn-enemy-gauge.prt-enemy-percent.alive > .txt-gauge-value');
                     if (!el) {
@@ -1797,7 +1837,7 @@
                             body += `${blue ? '[蓝箱]' : ''} ${t} x ${r.count}\n`;
                         } else {
                             icon = icon_url.gold_brick;
-                            title = title.replace('蓝箱道具', '绯绯金'); // 👈 修复了replace不生效的BUG
+                            title = title.replace('蓝箱道具', '绯绯金'); 
                             body += `${blue ? '[蓝箱]' : ''} 获得了绯绯金！${t} x ${r.count}`;
                         }
                     }
