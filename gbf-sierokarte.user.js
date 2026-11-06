@@ -79,6 +79,8 @@
             filtering: false,
             filtering_by_asc: true,
             enable_layout_change: false,
+            earth_hunting: false, // 土属性猎金专属开关
+            hp_refresh_at_10: false, // 血量低于10%刷新
             auto_enter: false,
             auto_raid_select: false,
             auto_auto: false,
@@ -184,17 +186,10 @@
     const utils = {
         cloud: {
             write_battle_log: async (battle_log) => {
-                await fetch('https://battlenote.neko-tail.wang/save_log', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(battle_log)
-                })
+                // 服务器已死，不作处理，防止报错
             },
             read_battle_log: async () => {
-                const res = await fetch(`https://battlenote.neko-tail.wang/${uid}`);
-                return await res.json();
+                return [];
             }
         },
         danger_actions: {
@@ -230,12 +225,11 @@
                             console.debug('页面不再存在该元素...结束...')
                             break;
                         } else if (
-                            document.querySelector('#pop-c-a-i')?.children.length > 0 || 
+                            document.querySelector('#pop-c-a-i')?.children.length > 0 ||
                             document.querySelector('input[placeholder*="認証文字"]') !== null // 验证码检测
                         ) {
                             console.warn("🚨 触发风控拦截或图像验证码！停止点击！");
-                            // 注意：报警音频由全局监控统一负责，这里不再重复播放
-                            break; 
+                            break;
                         }
                     }
                     if (n >= 50) console.debug('OK按钮点击重试达到50次上限');
@@ -466,25 +460,37 @@
                 utils.redirect.reload();
             }
 
+            // 👈 判断是否需要因为“土属性猎金”而延迟刷新 (改为10秒)
+            const do_attack_reload = () => {
+                if (config.danger_mode.earth_hunting) {
+                    console.warn("🐌 开启土属性猎金模式：等待10秒内置CD...");
+                    setTimeout(() => {
+                        utils.redirect.reload();
+                    }, 10000);
+                } else {
+                    utils.redirect.reload();
+                }
+            };
+
             // 当前为普通攻击 且 允许普通攻击后刷新
             if (is_normal_attack && config.refresh.attack === true) {
-                utils.redirect.reload();
+                do_attack_reload();
             }
 
             // 当前为召唤 且 允许召唤后刷新
             if (is_summon && config.refresh.summon === true) {
-                utils.redirect.reload();
+                do_attack_reload();
             }
 
             // 当前为任意技能 且 允许技能后刷新
             if (is_ability && config.refresh.ability === true) {
-                utils.redirect.reload();
+                do_attack_reload();
             }
 
             if (is_ability_or_summon) {
                 // 把所有相关的 ability 和 summon 都找出来，而不是只找第一个
                 const actions = scenario.filter(o => o['cmd'] === 'ability' || o['cmd'] === 'summon');
-                
+
                 if (actions.length > 0) {
                     // 把所有的名字提取出来组成一个数组
                     const names = actions.map(o => o.name);
@@ -497,9 +503,9 @@
                             // 只要数组里有任意一个名字跟配置里的 keys 匹配，就触发刷新
                             const match = names.some(n => item.keys.includes(n));
                             console.debug(`当前比较结果为${match}`);
-                            
+
                             if (match) {
-                                utils.redirect.reload();
+                                do_attack_reload();
                             }
                         }
                     })
@@ -914,7 +920,7 @@
                     },
                     {
                         key: 'auto_raid_select',
-                        label: '⚠开启猎金模式',
+                        label: '<span style="color: gold;">⚠开启猎金模式</span>',
                         desc: '自动进入首个大巴副本',
                         type: 'bool',
                         path: 'danger_mode.auto_raid_select',
@@ -927,6 +933,24 @@
                         desc: '超过阈值时自动退出副本至副本选择界面',
                         type: 'text',
                         path: 'danger_mode.contribution',
+                        cls: 'danger',
+                        danger_mode: true,
+                    },
+                    {
+                        key: 'earth_hunting',
+                        label: '⚠土属性猎金(延迟10秒刷新)',
+                        desc: '土奥义队专属：勾选后，在攻击/技能/召唤触发的刷新时，脚本会等待10秒再刷新，避免内置CD带到下一个BOSS。结算刷新不受影响。',
+                        type: 'bool',
+                        path: 'danger_mode.earth_hunting',
+                        cls: 'danger',
+                        danger_mode: true,
+                    },
+                    {
+                        key: 'hp_refresh_at_10',
+                        label: '⚠BOSS血量低于10%自动刷新',
+                        desc: '当BOSS血量剩余10%及以下（但未死亡）时，脚本自动触发刷新。通常用于放弃残血BOSS去抢下一只。',
+                        type: 'bool',
+                        path: 'danger_mode.hp_refresh_at_10',
                         cls: 'danger',
                         danger_mode: true,
                     },
@@ -948,10 +972,9 @@
                         cls: 'danger',
                         danger_mode: true,
                     },
-                    // 一键副本切换总开关
                     {
                         key: 'enable_auto_farm_switch',
-                        label: '⚠一键副本切换(点击+进本)',
+                        label: '<span style="color: gold;">⚠一键副本切换(点击+进本)</span>',
                         desc: '勾选此选项将同时开启下方的【启用自动点击】和【启用自动进入副本】；取消勾选则同时关闭。',
                         type: 'bool',
                         get: () => !!(config.danger_mode.auto_auto && config.danger_mode.auto_enter),
@@ -1014,7 +1037,7 @@
                         desc: '生成随机延迟的倍率。',
                         type: 'number',
                         path: 'delay.ratio.hunt',
-                        cls: 'params danger hidden', // 👈 加上了 params，让它跟着延迟参数一起显示
+                        cls: 'params danger hidden',
                         danger_mode: false,
                     },
                 ];
@@ -1148,7 +1171,12 @@
 
                     const label = document.createElement('label');
                     label.classList.add('panel-label');
-                    label.textContent = field.label || field.key;
+                    // 👈 修改这里：支持解析 HTML 以改变字体颜色
+                    if (field.label && field.label.includes('<span')) {
+                        label.innerHTML = field.label;
+                    } else {
+                        label.textContent = field.label || field.key;
+                    }
                     label.id = `${field.key}_label`;
 
                     let curVal;
@@ -1608,32 +1636,32 @@
             watch: {
                 async captcha(callback) {
                     let isTriggered = false;
-                    // 优化：只监听特定弹窗的容器，不再全屏扫描 textContent
+                    // 👈 优化：只监听特定弹窗的容器，不再全屏扫描 textContent
                     const checkCaptcha = () => {
                         if (isTriggered) return;
-                        
+
                         const popup = document.querySelector('#pop-c-a-i');
                         if (popup) {
                             // 检查弹窗里面有没有验证码图片或输入框
-                            const isCaptcha = popup.querySelector('input[placeholder*="認証文字"]') || 
+                            const isCaptcha = popup.querySelector('input[placeholder*="認証文字"]') ||
                                               popup.textContent.includes('画像認証');
                             if (isCaptcha) {
                                 isTriggered = true;
-                                callback(); 
+                                callback();
                             }
                         }
                     };
 
                     const obs = new MutationObserver(checkCaptcha);
-                    // 缩小监听范围，只监听弹窗所在的容器
+                    // 👈 缩小监听范围，只监听弹窗所在的容器
                     const root = document.querySelector('#mobage-game-container') || document.body;
                     obs.observe(root, { childList: true, subtree: true });
-                    
-                    checkCaptcha(); 
-                    
+
+                    checkCaptcha();
+
                     return () => obs.disconnect();
                 },
-                
+
                 async enemyHP(callback) {
                     const el = await utils.tools.waitForQ('.btn-enemy-gauge.prt-enemy-percent.alive > .txt-gauge-value');
                     if (!el) {
@@ -1642,23 +1670,33 @@
                         console.debug('已定位BOSS HP元素', el, el.textContent);
                     }
 
-                    const isZero = () => {
-                        const v = (el.textContent ?? "").trim();
-                        return v === "0" || Number(v) === 0;
+                    let isTriggered = false;
+                    const checkHP = () => {
+                        if (isTriggered) return;
+                        const v = (el.textContent ?? "").trim().replace('%', '');
+                        const hp = Number(v);
+                        
+                        // 如果开启了 10% 刷新，并且血量 <= 10 且 > 0
+                        if (config.danger_mode.hp_refresh_at_10 && hp <= 10 && hp > 0) {
+                            isTriggered = true;
+                            console.warn(`🩸 BOSS血量低于10%（当前 ${hp}%），触发自动刷新！`);
+                            callback();
+                            return;
+                        }
+                        
+                        // 如果血量归零（击杀）
+                        if (hp === 0) {
+                            isTriggered = true;
+                            callback();
+                            return;
+                        }
                     };
 
-                    if (isZero()) {
-                        callback();
+                    if (checkHP()) {
                         return () => {};
                     }
 
-                    const obs = new MutationObserver(() => {
-                        if (isZero()) {
-                            obs.disconnect();
-                            callback();
-                        }
-                    });
-
+                    const obs = new MutationObserver(checkHP);
                     obs.observe(el, {
                         childList: true,
                         characterData: true,
@@ -1798,16 +1836,8 @@
                 return observer;
             },
             save_drop_log: async (battle_date, data) => {
-                if (uid === 0) return;
-                const is_trial = data.is_trial_battle;
-                const d = data.result_data;
-                const battle_log = {
-                    uid: uid,
-                    is_trial: is_trial,
-                    battle_date: battle_date,
-                    battle_json: JSON.stringify(d),
-                }
-                await utils.cloud.write_battle_log(battle_log);
+                // 原作者服务器已挂，为避免报错阻断通知，在此处直接返回
+                return;
             },
             parseRewards(payload, groupBy = "key") {
                 const rl = payload?.reward_list ?? {};
@@ -1846,7 +1876,7 @@
                 let title = '[工坊]获得蓝箱道具';
                 let body = '';
                 let icon = icon_url.mine;
-                
+
                 result.forEach(r => {
                     const t = r.name
                     const blue = r.by_slot.hasOwnProperty(11);
@@ -1855,7 +1885,7 @@
                             body += `${blue ? '[蓝箱]' : ''} ${t} x ${r.count}\n`;
                         } else {
                             icon = icon_url.gold_brick;
-                            title = title.replace('蓝箱道具', '绯绯金'); 
+                            title = title.replace('蓝箱道具', '绯绯金');
                             body += `${blue ? '[蓝箱]' : ''} 获得了绯绯金！${t} x ${r.count}`;
                         }
                     }
