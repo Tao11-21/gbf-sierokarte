@@ -80,7 +80,7 @@
             filtering_by_asc: true,
             enable_layout_change: false,
             earth_hunting: false, // 土属性猎金专属开关
-            hp_refresh_at_10: false, // 血量低于10%刷新
+            hp_refresh_at_10: false, // 血量低于5%刷新（变量名保留）
             auto_enter: false,
             auto_raid_select: false,
             auto_auto: false,
@@ -946,9 +946,9 @@
                         danger_mode: true,
                     },
                     {
-                        key: 'hp_refresh_at_10',
-                        label: '⚠BOSS血量低于10%自动刷新',
-                        desc: '当BOSS血量剩余10%及以下（但未死亡）时，脚本自动触发刷新。通常用于放弃残血BOSS去抢下一只。',
+                        key: 'hp_refresh_at_10', // 变量名保留
+                        label: '⚠BOSS血量低于5%自动刷新', // 修改了文字
+                        desc: '当BOSS血量剩余5%及以下（但未死亡）时，脚本自动触发刷新。通常用于放弃残血BOSS去抢下一只。',
                         type: 'bool',
                         path: 'danger_mode.hp_refresh_at_10',
                         cls: 'danger',
@@ -1676,10 +1676,10 @@
                         const v = (el.textContent ?? "").trim().replace('%', '');
                         const hp = Number(v);
                         
-                        // 如果开启了 10% 刷新，并且血量 <= 10 且 > 0
-                        if (config.danger_mode.hp_refresh_at_10 && hp <= 10 && hp > 0) {
+                        // 如果开启了 5% 刷新，并且血量 <= 5 且 > 0
+                        if (config.danger_mode.hp_refresh_at_10 && hp <= 5 && hp > 0) {
                             isTriggered = true;
-                            console.warn(`🩸 BOSS血量低于10%（当前 ${hp}%），触发自动刷新！`);
+                            console.warn(`🩸 BOSS血量低于5%（当前 ${hp}%），触发自动刷新！`);
                             callback();
                             return;
                         }
